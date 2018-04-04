@@ -17,12 +17,12 @@ class JsonStore
     /**
      * @var array
      */
-    private $data;
+    protected $data;
 
     /**
      * @var JsonPath
      */
-    private $jsonPath;
+    protected $jsonPath;
 
     /**
      * @param string|array|\stdClass $data
@@ -204,14 +204,12 @@ class JsonStore
         return false;
     }
 
-    private function normalizedFirst($expr)
+    protected function normalizedFirst($expr)
     {
         if ($expr == "") {
             return false;
         } else {
             if (preg_match("/^\$(\[([0-9*]+|'[-a-zA-Z0-9_ ]+')\])*$/", $expr)) {
-                print("normalized: " . $expr);
-
                 return $expr;
             } else {
                 $res = $this->jsonPath->jsonPath($this->data, $expr, array("resultType" => "PATH"));
