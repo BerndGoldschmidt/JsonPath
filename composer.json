@@ -1,18 +1,19 @@
 {
-    "name": "peekmo/jsonpath",
+    "name": "berndgoldschmidt/jsonpath",
     "license": "MIT",
     "type": "project",
-    "homepage": "https://github.com/Peekmo/JsonPath",
+    "homepage": "https://github.com/BerndGoldschmidt/JsonPath",
     "description": "Library to use JsonPath",
     "authors": [
         {"name": "Stefan Goessner"},
-        {"name": "Axel Anceau", "email": "axel.anceau@gmail.com"}
+        {"name": "Axel Anceau", "email": "axel.anceau@gmail.com"},
+        {"name": "Bernd Goldschmidt", "email": "github@berndgoldschmidt.de"}
     ],
     "require-dev": {
         "phpunit/phpunit": "~4.1"
     },
     "autoload": {
-        "psr-0": {"Peekmo\\JsonPath": "src/"}
+        "psr-0": {"BerndGoldschmidt\\JsonPath": "src/"}
     },
     "require": {
         "php": ">=5.3.3"

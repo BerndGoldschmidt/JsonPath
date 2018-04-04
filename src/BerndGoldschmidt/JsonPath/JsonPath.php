@@ -1,6 +1,6 @@
 <?php
 
-namespace Peekmo\JsonPath;
+namespace BerndGoldschmidt\JsonPath;
 
 
 /* JSONPath 0.8.3 - XPath for JSON

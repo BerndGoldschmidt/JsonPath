@@ -1,6 +1,6 @@
 <?php
 
-namespace Peekmo\JsonPath;
+namespace BerndGoldschmidt\JsonPath;
 
 /* JSONStore 0.5 - JSON structure as storage
 *

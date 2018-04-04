@@ -2,7 +2,7 @@
 
 namespace tests;
 
-use Peekmo\JsonPath\JsonStore;
+use BerndGoldschmidt\JsonPath\JsonStore;
 
 class JsonStoreTest extends \PHPUnit_Framework_TestCase
 {
