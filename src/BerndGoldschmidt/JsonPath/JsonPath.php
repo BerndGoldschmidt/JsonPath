@@ -75,11 +75,11 @@ class JsonPath
      */
     public function jsonPath(array $array, string $jsonPath, array $args = [])
     {
-        $this->resultType = (
+        $this->resultType =
             is_array($args) && array_key_exists('resultType', $args)
                 ? $args['resultType']
                 : self::RESULT_TYPE_VALUE
-        );
+        ;
 
         $this->obj = $array;
         if (! empty($jsonPath)
@@ -104,12 +104,12 @@ class JsonPath
      * @param string $expression
      * @return string
      */
-    private function normalize(string $expression): string
+    public function normalize(string $expression): string
     {
         // Replaces filters by #0 #1...
         $expression = preg_replace_callback(
             ["/[\['](\??\(.*?\))[\]']/", "/\['(.*?)'\]/"],
-            [&$this, 'tempFilters'],
+            [$this, 'tempFilters'],
             $expression
         );
 
@@ -218,8 +218,8 @@ class JsonPath
         if ($p) {
             $pathOrValue =
                 $this->resultType === self::RESULT_TYPE_PATH
-                ? $this->asPath($p)
-                : $v;
+                    ? $this->asPath($p)
+                    : $v;
 
             array_push($this->result, $pathOrValue);
         }

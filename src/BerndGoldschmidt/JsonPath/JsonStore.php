@@ -145,11 +145,11 @@ class JsonStore
 
         $values = [];
 
-        foreach ($exprs as $jsonPath) {
+        foreach ($exprs as $jsonPathPart) {
             $o =& $this->data;
             $keys = preg_split(
                 "/([\"'])?\]\[([\"'])?/",
-                preg_replace(array("/^\\$\[[\"']?/", "/[\"']?\]$/"), "", $jsonPath)
+                preg_replace(array("/^\\$\[[\"']?/", "/[\"']?\]$/"), "", $jsonPathPart)
             );
 
             for ($i = 0; $i < count($keys); $i++) {
@@ -215,15 +215,25 @@ class JsonStore
      */
     public function add(string $parentJsonString, $value, string $name = '')
     {
+        if ($parentJsonString === '$') { // root
+            if ($name != '') {
+                $this->data[$name] = $value;
+            } else {
+                $this->data[] = $value;
+            }
+
+            return true;
+        }
+
         $get = $this->get($parentJsonString);
         if (!($parents =& $get)) {
             return false;
         }
 
         foreach ($parents as &$parent) {
-            $parent = is_array($parent) ? $parent : array();
+            $parent = is_array($parent) ? $parent : [];
 
-            if ($name != "") {
+            if ($name != '') {
                 $parent[$name] = $value;
             } else {
                 $parent[] = $value;
