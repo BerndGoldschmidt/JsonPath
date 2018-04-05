@@ -7,6 +7,9 @@ use PHPUnit\Framework\TestCase;
 
 class JsonStoreTest extends TestCase
 {
+    /**
+     * @var string
+     */
     private $json;
 
     /**
@@ -104,11 +107,5 @@ class JsonStoreTest extends TestCase
 
         $expected = ["fiction"];
         $this->assertEquals($data, $expected);
-    }
-
-    public function tearDown()
-    {
-        $this->jsonStore = null;
-        $this->json = null;
     }
 } 

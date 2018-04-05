@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit colors="true">
+    <testsuites>
+        <testsuite name="Test Suite">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <filter>
+        <whitelist addUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">src/</directory>
+        </whitelist>
+    </filter>
+
+    <logging>
+        <!-- coverage -->
+        <log type="coverage-text" target="php://stdout" showUncoveredFiles="true" />
+        <log type="coverage-html" target="coverage" showUncoveredFiles="true" />
+        
+        <!-- test dox -->
+        <log type="testdox-html" target="coverage/testdox.html"/>
+        <log type="testdox-text" target="coverage/testdox.txt"/>
+    </logging>
+</phpunit>

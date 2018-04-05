@@ -8,7 +8,7 @@ namespace BerndGoldschmidt\JsonPath;
  * Licensed under the MIT (MIT-LICENSE.txt) licence.
  *
  * Modified by Axel Anceau
- * Modified by Bernd Goldschmidt <github@berndgoldschmidt.de>
+ * Modified 2018 by Bernd Goldschmidt <github@berndgoldschmidt.de>
  */
 
 /**
@@ -17,6 +17,30 @@ namespace BerndGoldschmidt\JsonPath;
  */
 class JsonPath
 {
+    /**
+     * Result type value
+     *
+     * @var string
+     */
+    public const RESULT_TYPE_VALUE = 'VALUE';
+
+    /**
+     * Result type path
+     *
+     * @var string
+     */
+    public const RESULT_TYPE_PATH = 'PATH';
+
+    /**
+     * All valid result types
+     *
+     * @var string[]
+     */
+    public const VALID_RESULT_TYPES = [
+        self::RESULT_TYPE_VALUE,
+        self::RESULT_TYPE_PATH,
+    ];
+
     /**
      * @var array
      */
@@ -41,30 +65,6 @@ class JsonPath
         '!',
         '<',
         '>'
-    ];
-
-    /**
-     * Result type value
-     *
-     * @var string
-     */
-    public const RESULT_TYPE_VALUE = 'VALUE';
-
-    /**
-     * Result type path
-     *
-     * @var string
-     */
-    public const RESULT_TYPE_PATH = 'PATH';
-
-    /**
-     * All valid result types
-     *
-     * @var string[]
-     */
-    public const VALID_RESULT_TYPES = [
-        self::RESULT_TYPE_VALUE,
-        self::RESULT_TYPE_PATH,
     ];
 
     /**
@@ -115,14 +115,15 @@ class JsonPath
 
         // ; separator between each elements
         $expression = preg_replace(
-            array("/'?\.'?|\['?/", "/;;;|;;/", "/;$|'?\]|'$/"),
-            array(";", ";..;", ""),
+            ["/'?\.'?|\['?/", "/;;;|;;/", "/;$|'?\]|'$/"],
+            [";", ";..;", ""],
             $expression
         );
 
         // Restore filters
-        $expression = preg_replace_callback("/#([0-9]+)/", array(&$this, "restoreFilters"), $expression);
-        $this->result = array(); // result array was temporarily used as a buffer ..
+        $expression = preg_replace_callback("/#([0-9]+)/", [&$this, "restoreFilters"], $expression);
+        $this->result = []; // result array was temporarily used as a buffer ..
+
         return $expression;
     }
 
@@ -138,45 +139,45 @@ class JsonPath
         $elements = explode('\'', $f);
 
         // Hack to make "dot" works on filters
-        for ($i = 0, $m = 0; $i < count($elements); $i++) {
-            if ($m%2 === 0) {
+        for ($i = 0; $i < count($elements); $i++) {
+            if ($i % 2 !== 0) {
+                continue;
+            }
 
-                if ($i > 0 && substr($elements[$i - 1], 0, 1) == '\\') {
+            if ($i > 0 && substr($elements[$i - 1], 0, 1) == '\\') {
+                continue;
+            }
+
+            $e = explode('.', $elements[$i]);
+            $str = '';
+            $first = true;
+
+            foreach ($e as $subString) {
+                if ($first) {
+                    $str = $subString;
+                    $first = false;
                     continue;
                 }
 
-                $e = explode('.', $elements[$i]);
-                $str = '';
-                $first = true;
-
-                foreach ($e as $subString) {
-                    if ($first) {
-                        $str = $subString;
-                        $first = false;
-                        continue;
-                    }
-
-                    $end = null;
-                    if (false !== $pos = $this->strPosArray($subString, $this->keywords)) {
-                        list($subString, $end) = [
-                            substr($subString, 0, $pos),
-                            substr($subString, $pos, strlen($subString))
-                        ];
-                    }
-
-                    $str .= '[' . $subString . ']';
-                    if (null !== $end) {
-                        $str .= $end;
-                    }
+                $end = null;
+                if (false !== $pos = $this->strPosArray($subString, $this->keywords)) {
+                    list($subString, $end) = [
+                        substr($subString, 0, $pos),
+                        substr($subString, $pos, strlen($subString))
+                    ];
                 }
 
-                $elements[$i] = $str;
+                $str .= '[' . $subString . ']';
+                if (null !== $end) {
+                    $str .= $end;
+                }
             }
 
-            $m++;
+            $elements[$i] = $str;
         }
 
-        return "[#" . (array_push($this->result, implode('\'', $elements)) - 1) . "]";
+        $addedElements = array_push($this->result, implode('\'', $elements)) - 1;
+        return '[#' . $addedElements . ']';
     }
 
     /**
@@ -215,14 +216,12 @@ class JsonPath
     private function store(string $p, $v): bool
     {
         if ($p) {
-            array_push(
-                $this->result,
-                (
-                    $this->resultType == self::RESULT_TYPE_PATH
-                        ? $this->asPath($p)
-                        : $v
-                )
-            );
+            $pathOrValue =
+                $this->resultType === self::RESULT_TYPE_PATH
+                ? $this->asPath($p)
+                : $v;
+
+            array_push($this->result, $pathOrValue);
         }
 
         return !!$p;
@@ -246,10 +245,10 @@ class JsonPath
         if (is_array($val) && array_key_exists($loc, $val)) {
             $this->trace($x, $val[$loc], $path . ";" . $loc);
         } else if ($loc == "*") {
-            $this->walk($loc, $x, $val, $path, array(&$this, "callbackLocatorStar"));
+            $this->walk($loc, $x, $val, $path, [&$this, "callbackLocatorAsterisk"]);
         } else if ($loc === "..") {
             $this->trace($x, $val, $path);
-            $this->walk($loc, $x, $val, $path, array(&$this, "callbackLocatorDoubleDot"));
+            $this->walk($loc, $x, $val, $path, [&$this, "callbackLocatorDoubleDot"]);
         } else if (preg_match("/^\(.*?\)$/", $loc)) { // [(expr)]
             $this->trace(
                 $this->evalx(
@@ -261,7 +260,7 @@ class JsonPath
                 $path
             );
         } else if (preg_match("/^\?\(.*?\)$/", $loc)) { // [?(expr)]
-            $this->walk($loc, $x, $val, $path, array(&$this, "callbackLocationQuestionMarkPrefix"));
+            $this->walk($loc, $x, $val, $path, [&$this, "callbackLocationQuestionMarkPrefix"]);
         } else if (preg_match("/^(-?[0-9]*):(-?[0-9]*):?(-?[0-9]*)$/", $loc)) {
             // [start:end:step]  python slice syntax
             $this->slice($loc, $x, $val, $path);
@@ -271,18 +270,39 @@ class JsonPath
         }
     }
 
-    private function callbackLocatorStar($m, $l, $x, $v, $p)
+    /**
+     * @param $m
+     * @param $l
+     * @param $x
+     * @param $v
+     * @param $p
+     */
+    private function callbackLocatorAsterisk($m, /** @noinspection PhpUnusedParameterInspection */ $l, $x, $v, $p)
     {
         $this->trace($m . ";" . $x, $v, $p);
     }
 
-    private function callbackLocatorDoubleDot($m, $l, $x, $v, $p)
+    /**
+     * @param $m
+     * @param $l
+     * @param $x
+     * @param $v
+     * @param $p
+     */
+    private function callbackLocatorDoubleDot($m, /** @noinspection PhpUnusedParameterInspection */ $l, $x, $v, $p)
     {
         if (is_array($v[$m])) {
             $this->trace("..;" . $x, $v[$m], $p . ";" . $m);
         }
     }
 
+    /**
+     * @param $m
+     * @param $l
+     * @param $x
+     * @param $v
+     * @param $p
+     */
     private function callbackLocationQuestionMarkPrefix($m, $l, $x, $v, $p)
     {
         if ($this->evalx(preg_replace("/^\?\((.*?)\)$/", "$1", $l), $v[$m])) {
@@ -290,6 +310,13 @@ class JsonPath
         }
     }
 
+    /**
+     * @param $loc
+     * @param $expr
+     * @param $val
+     * @param $path
+     * @param callable $f
+     */
     private function walk($loc, $expr, $val, $path, callable $f)
     {
         foreach ($val as $m => $v) {
@@ -297,15 +324,22 @@ class JsonPath
         }
     }
 
+    /**
+     * @param $loc
+     * @param $expr
+     * @param $v
+     * @param $path
+     */
     private function slice($loc, $expr, $v, $path)
     {
         $s = explode(":", preg_replace("/^(-?[0-9]*):(-?[0-9]*):?(-?[0-9]*)$/", "$1:$2:$3", $loc));
-        $len = count($v);
+        $length = count($v);
         $start = (int)$s[0] ? $s[0] : 0;
-        $end = (int)$s[1] ? $s[1] : $len;
+        $end = (int)$s[1] ? $s[1] : $length;
         $step = (int)$s[2] ? $s[2] : 1;
-        $start = ($start < 0) ? max(0, $start + $len) : min($len, $start);
-        $end = ($end < 0) ? max(0, $end + $len) : min($len, $end);
+        $start = ($start < 0) ? max(0, $start + $length) : min($length, $start);
+        $end = ($end < 0) ? max(0, $end + $length) : min($length, $end);
+
         for ($i = $start; $i < $end; $i += $step) {
             $this->trace($i . ";" . $expr, $v, $path);
         }
@@ -317,16 +351,19 @@ class JsonPath
      * @param string $vname
      * @return string
      */
-    private function evalx($x, $v, $vname = null)
-    {
+    private function evalx(
+        $x,
+        /** @noinspection PhpUnusedParameterInspection */ $v,
+        /** @noinspection PhpUnusedParameterInspection */ $vname = null
+    ) {
         $name = "";
-        $expr = preg_replace(array("/\\$/", "/@/"), array("\$this->obj", "\$v"), $x);
+        $expr = preg_replace(["/\\$/", "/@/"], ["\$this->obj", "\$v"], $x);
         $expr = preg_replace("#\[([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\]#", "['$1']", $expr);
 
         $res = eval("\$name = @$expr;");
 
         if ($res === false) {
-            throw new \InvalidArgumentException('(jsonPath) SyntaxError: ' . $expr);
+            throw new \InvalidArgumentException('(jsonPath) SyntaxError: ' . $x . ' => ' . $expr);
         }
 
         return $name;

@@ -8,7 +8,7 @@ namespace BerndGoldschmidt\JsonPath;
 * Licensed under the MIT (MIT-LICENSE.txt) licence.
 *
 * Modified by Axel Anceau
-* Modified by Bernd Goldschmidt <github@berndgoldschmidt.de>
+* Modified 2018 by Bernd Goldschmidt <github@berndgoldschmidt.de>
 */
 
 /**
@@ -21,7 +21,7 @@ class JsonStore
     /**
      * @var array
      */
-    private static $emptyArray = array();
+    private static $emptyArray = [];
 
     /**
      * @var array
@@ -57,8 +57,21 @@ class JsonStore
         } else if (is_array($data)) {
             $this->fillFromArray($data);
         } else {
-            throw new \InvalidArgumentException(sprintf('Invalid data type in JsonStore. Expected object, array or string, got %s', gettype($data)));
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Invalid data type in JsonStore. Expected object, array or string, got %s',
+                    gettype($data)
+                )
+            );
         }
+    }
+
+    /**
+     * @return array
+     */
+    public function getData(): array
+    {
+        return $this->data;
     }
 
     /**
@@ -71,7 +84,18 @@ class JsonStore
     }
 
     /**
-     * JsonEncoded, pretty-printed version of the object
+     * Enable (string) type casting
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return $this->toString();
+    }
+
+    /**
+     * Json encoded, pretty-printed version of the object
+     *
      * @return string
      */
     public function prettyPrint(): string
@@ -83,7 +107,7 @@ class JsonStore
      * Returns the given json string to object
      * @return \stdClass
      */
-    public function toObject(): \stdClass
+    public function toObject()
     {
         return json_decode(json_encode($this->data));
     }
@@ -95,13 +119,11 @@ class JsonStore
      */
     public function toArray(): array
     {
-        $array = $this->data;
-
-        if (! is_array($array)) {
-            $array = [];
+        if (! is_array($this->data)) {
+            return [];
         }
 
-        return $array;
+        return $this->data;
     }
 
     /**
@@ -114,67 +136,73 @@ class JsonStore
      */
     public function get(string $jsonPath, bool $unique = false): array
     {
-        if ((($exprs = $this->normalizedFirst($jsonPath)) !== false) &&
-            (is_array($exprs) || $exprs instanceof \Traversable)
+        if (
+            ($exprs = $this->normalizedFirst($jsonPath)) === false
+            || !(is_array($exprs) || ($exprs instanceof \Traversable))
         ) {
-            $values = array();
+            return self::$emptyArray;
+        }
 
-            foreach ($exprs as $jsonPath) {
-                $o =& $this->data;
-                $keys = preg_split(
-                    "/([\"'])?\]\[([\"'])?/",
-                    preg_replace(array("/^\\$\[[\"']?/", "/[\"']?\]$/"), "", $jsonPath)
-                );
+        $values = [];
 
-                for ($i = 0; $i < count($keys); $i++) {
-                    $o =& $o[$keys[$i]];
-                }
+        foreach ($exprs as $jsonPath) {
+            $o =& $this->data;
+            $keys = preg_split(
+                "/([\"'])?\]\[([\"'])?/",
+                preg_replace(array("/^\\$\[[\"']?/", "/[\"']?\]$/"), "", $jsonPath)
+            );
 
-                $values[] = & $o;
+            for ($i = 0; $i < count($keys); $i++) {
+                $o =& $o[$keys[$i]];
             }
 
-            if (true === $unique) {
-                if (!empty($values) && is_array($values[0])) {
-                    array_walk($values, function(&$value) {
-                        $value = json_encode($value);
-                    });
+            $values[] = &$o;
+        }
 
-                    $values = array_unique($values);
-                    array_walk($values, function(&$value) {
-                        $value = json_decode($value, true);
-                    });
-
-                    return array_values($values);
-                }
-
-                return array_unique($values);
-            }
-
+        if ($unique !== true) {
             return $values;
         }
 
-        return self::$emptyArray;
+        if (empty($values)
+            || !array_key_exists(0, $values)
+            || !is_array($values[0])
+        ) {
+            return array_unique($values);
+        }
+
+        array_walk($values, function (&$value) {
+            $value = json_encode($value);
+        });
+
+        $values = array_unique($values);
+        array_walk($values, function (&$value) {
+            $value = json_decode($value, true);
+        });
+
+        return array_values($values);
     }
 
     /**
      * Sets the value for all elements matching the given JsonPath expression
+     *
      * @param string $jsonPath JsonPath expression
      * @param mixed $value Value to set
-     * @return bool returns true if success
+     * @return bool returns true if successfully set
      * @throws \Exception
      */
     function set(string $jsonPath, $value): bool
     {
         $get = $this->get($jsonPath);
-        if ($res =& $get) {
-            foreach ($res as &$r) {
-                $r = $value;
-            }
 
-            return true;
+        if (!($res =& $get)) {
+            return false;
         }
 
-        return false;
+        foreach ($res as &$r) {
+            $r = $value;
+        }
+
+        return true;
     }
 
     /**
@@ -188,22 +216,21 @@ class JsonStore
     public function add(string $parentJsonString, $value, string $name = '')
     {
         $get = $this->get($parentJsonString);
-        if ($parents =& $get) {
-
-            foreach ($parents as &$parent) {
-                $parent = is_array($parent) ? $parent : array();
-
-                if ($name != "") {
-                    $parent[$name] = $value;
-                } else {
-                    $parent[] = $value;
-                }
-            }
-
-            return true;
+        if (!($parents =& $get)) {
+            return false;
         }
 
-        return false;
+        foreach ($parents as &$parent) {
+            $parent = is_array($parent) ? $parent : array();
+
+            if ($name != "") {
+                $parent[$name] = $value;
+            } else {
+                $parent[] = $value;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -214,27 +241,28 @@ class JsonStore
      */
     public function remove(string $jsonPath): bool
     {
-        if ((($exprs = $this->normalizedFirst($jsonPath)) !== false) &&
-            (is_array($exprs) || $exprs instanceof \Traversable)
+        if (
+            ($exprs = $this->normalizedFirst($jsonPath)) === false
+            || !(is_array($exprs) || ($exprs instanceof \Traversable))
         ) {
-            foreach ($exprs as &$jsonPath) {
-                $o =& $this->data;
-                $keys = preg_split(
-                    "/([\"'])?\]\[([\"'])?/",
-                    preg_replace(array("/^\\$\[[\"']?/", "/[\"']?\]$/"), "", $jsonPath)
-                );
-                $i = 0;
-                for ($i = 0; $i < count($keys) - 1; $i++) {
-                    $o =& $o[$keys[$i]];
-                }
-
-                unset($o[$keys[$i]]);
-            }
-
-            return true;
+            return false;
         }
 
-        return false;
+        foreach ($exprs as &$jsonPath) {
+            $o =& $this->data;
+            $keys = preg_split(
+                "/([\"'])?\]\[([\"'])?/",
+                preg_replace(array("/^\\$\[[\"']?/", "/[\"']?\]$/"), "", $jsonPath)
+            );
+            $i = 0;
+            for ($i = 0; $i < count($keys) - 1; $i++) {
+                $o =& $o[$keys[$i]];
+            }
+
+            unset($o[$keys[$i]]);
+        }
+
+        return true;
     }
 
     /**
@@ -313,5 +341,4 @@ class JsonStore
     {
         $this->jsonPath = $jsonPath;
     }
-
 }
