@@ -71,6 +71,10 @@ class JsonStore
      */
     public function getData(): array
     {
+        if (empty($this->data)) {
+            $this->data = [];
+        }
+
         return $this->data;
     }
 
